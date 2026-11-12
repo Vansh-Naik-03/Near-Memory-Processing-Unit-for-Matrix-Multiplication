@@ -1,184 +1,123 @@
-// =============================================================================
-// File: fsm_controller.v
-// Module: fsm_controller
-// Project: Near-Memory Processing Unit (NMPU)
-// Description:
-//   Control Unit (FSM) for Near-Memory Matrix Multiplication.
-//   Manages:
-//     - 3-level nested loop counters (i, j, k) for N x N matrix multiplication
-//     - Address generation for SRAM A, SRAM B, and SRAM C
-//     - Synchronous SRAM read/write control signals
-//     - PE array clear, enable, and accumulation control
-//     - START / DONE handshake interface with Host
-// =============================================================================
-
+// FSM controller: the "brain". It runs three loops for C = A x B:
+//   for i (row)  for j (column)  for k (dot-product step):  C[i][j] += A[i][k] * B[k][j]
+// Matrices are stored row by row, so address = row*N + column.
 `timescale 1ns / 1ps
 
 module fsm_controller #(
     parameter N          = 4,
     parameter DATA_WIDTH = 8,
     parameter ACC_WIDTH  = 24,
-    parameter ADDR_WIDTH = 4   // clog2(N*N) = clog2(16) = 4
+    parameter ADDR_WIDTH = 4
 )(
-    input  wire                   clk,
-    input  wire                   rst_n,
-    input  wire                   start,           // Start pulse from Host
-    output reg                    done,            // High when matrix C is fully computed
-    output reg                    busy,            // High during computation
+    input  wire                  clk,
+    input  wire                  rst_n,
+    input  wire                  start,      // host says "go"
+    output reg                   done,       // 1 when finished
+    output reg                   busy,       // 1 while working
 
-    // Memory control signals for Near-Memory SRAM banks
-    output reg  [ADDR_WIDTH-1:0]  sram_a_addr,
-    output reg  [ADDR_WIDTH-1:0]  sram_b_addr,
-    output reg  [ADDR_WIDTH-1:0]  sram_c_addr,
-    output reg                    sram_c_we,
+    output reg [ADDR_WIDTH-1:0]  sram_a_addr,
+    output reg [ADDR_WIDTH-1:0]  sram_b_addr,
+    output reg [ADDR_WIDTH-1:0]  sram_c_addr,
+    output reg                   sram_c_we,
 
-    // PE control signals
-    output reg                    pe_clear,        // Clear PE accumulator before new element
-    output reg                    pe_enable,       // Enable MAC step
-    output reg  [ADDR_WIDTH-1:0]  cnt_i_out,       // Current row index
-    output reg  [ADDR_WIDTH-1:0]  cnt_j_out,       // Current col index
-    output reg  [ADDR_WIDTH-1:0]  cnt_k_out        // Current inner product index
+    output reg                   pe_clear,
+    output reg                   pe_enable,
+    output wire [ADDR_WIDTH-1:0] cnt_i_out,  // for watching in waveforms
+    output wire [ADDR_WIDTH-1:0] cnt_j_out,
+    output wire [ADDR_WIDTH-1:0] cnt_k_out
 );
 
-    // State definitions
-    localparam [2:0]
-        ST_IDLE     = 3'd0,
-        ST_INIT_ELEM= 3'd1,
-        ST_FETCH    = 3'd2,
-        ST_MAC      = 3'd3,
-        ST_WRITE_C  = 3'd4,
-        ST_NEXT_ELEM= 3'd5,
-        ST_DONE     = 3'd6;
+    // the steps the FSM goes through
+    localparam IDLE      = 3'd0;  // wait for start
+    localparam INIT      = 3'd1;  // clear PE, ask memory for A[i][0], B[0][j]
+    localparam FETCH     = 3'd2;  // wait 1 clock for memory to answer
+    localparam MAC       = 3'd3;  // multiply-accumulate; ask for next pair
+    localparam WRITE_C   = 3'd4;  // save result into C
+    localparam NEXT      = 3'd5;  // move to next (i, j)
+    localparam FINISH    = 3'd6;  // tell host we are done
 
     reg [2:0] state;
+    reg [2:0] i, j, k;   // loop counters
 
-    // Loop counters (i: row of A/C, j: col of B/C, k: dot-product index)
-    reg [$clog2(N):0] i_cnt;
-    reg [$clog2(N):0] j_cnt;
-    reg [$clog2(N):0] k_cnt;
+    assign cnt_i_out = i;
+    assign cnt_j_out = j;
+    assign cnt_k_out = k;
 
-    // Expose internal counters for monitoring/debugging
-    always @(*) begin
-        cnt_i_out = i_cnt[ADDR_WIDTH-1:0];
-        cnt_j_out = j_cnt[ADDR_WIDTH-1:0];
-        cnt_k_out = k_cnt[ADDR_WIDTH-1:0];
-    end
-
-    // Sequential FSM logic
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            state       <= ST_IDLE;
-            done        <= 1'b0;
-            busy        <= 1'b0;
-            sram_a_addr <= {ADDR_WIDTH{1'b0}};
-            sram_b_addr <= {ADDR_WIDTH{1'b0}};
-            sram_c_addr <= {ADDR_WIDTH{1'b0}};
-            sram_c_we   <= 1'b0;
-            pe_clear    <= 1'b0;
-            pe_enable   <= 1'b0;
-            i_cnt       <= 0;
-            j_cnt       <= 0;
-            k_cnt       <= 0;
+            state <= IDLE;
+            done <= 0;  busy <= 0;
+            sram_a_addr <= 0;  sram_b_addr <= 0;  sram_c_addr <= 0;
+            sram_c_we <= 0;  pe_clear <= 0;  pe_enable <= 0;
+            i <= 0;  j <= 0;  k <= 0;
         end else begin
-            // Default single-cycle pulses
-            pe_clear  <= 1'b0;
-            pe_enable <= 1'b0;
-            sram_c_we <= 1'b0;
+            // these are 1-clock pulses, so default to 0 every clock
+            pe_clear  <= 0;
+            pe_enable <= 0;
+            sram_c_we <= 0;
 
             case (state)
 
-                // -------------------------------------------------------------
-                // ST_IDLE: Wait for Host start pulse
-                // -------------------------------------------------------------
-                ST_IDLE: begin
-                    done <= 1'b0;
+                IDLE: begin
+                    done <= 0;
                     if (start) begin
-                        busy  <= 1'b1;
-                        i_cnt <= 0;
-                        j_cnt <= 0;
-                        k_cnt <= 0;
-                        state <= ST_INIT_ELEM;
-                    end else begin
-                        busy  <= 1'b0;
+                        busy  <= 1;
+                        i <= 0;  j <= 0;  k <= 0;
+                        state <= INIT;
+                    end else
+                        busy <= 0;
+                end
+
+                INIT: begin
+                    pe_clear    <= 1;              // start C[i][j] from 0
+                    k           <= 0;
+                    sram_a_addr <= i * N;          // A[i][0]
+                    sram_b_addr <= j;              // B[0][j]
+                    state       <= FETCH;
+                end
+
+                FETCH: begin
+                    state <= MAC;                  // just wait for memory data
+                end
+
+                MAC: begin
+                    pe_enable <= 1;                // PE does acc += a*b
+                    if (k == N - 1)
+                        state <= WRITE_C;          // last step of dot product
+                    else begin
+                        k           <= k + 1;
+                        sram_a_addr <= i * N + (k + 1);   // A[i][k+1]
+                        sram_b_addr <= (k + 1) * N + j;   // B[k+1][j]
+                        state       <= FETCH;
                     end
                 end
 
-                // -------------------------------------------------------------
-                // ST_INIT_ELEM: Clear PE accumulator for new element C[i, j]
-                // -------------------------------------------------------------
-                ST_INIT_ELEM: begin
-                    pe_clear    <= 1'b1;
-                    k_cnt       <= 0;
-                    // Present address for k=0
-                    sram_a_addr <= (i_cnt * N) + 0;
-                    sram_b_addr <= (0 * N) + j_cnt;
-                    state       <= ST_FETCH;
+                WRITE_C: begin
+                    sram_c_we   <= 1;              // write PE result into C
+                    sram_c_addr <= i * N + j;      // C[i][j]
+                    state       <= NEXT;
                 end
 
-                // -------------------------------------------------------------
-                // ST_FETCH: Wait 1 cycle for SRAM synchronous read latency
-                // -------------------------------------------------------------
-                ST_FETCH: begin
-                    // On next cycle, SRAM read data will be stable at PE inputs
-                    state <= ST_MAC;
-                end
-
-                // -------------------------------------------------------------
-                // ST_MAC: Execute Multiply-Accumulate in PE
-                // -------------------------------------------------------------
-                ST_MAC: begin
-                    pe_enable <= 1'b1;
-
-                    if (k_cnt == N - 1) begin
-                        // Inner dot product complete for C[i, j]
-                        state <= ST_WRITE_C;
-                    end else begin
-                        // Advance k and request next pair of operands
-                        k_cnt       <= k_cnt + 1;
-                        sram_a_addr <= (i_cnt * N) + (k_cnt + 1);
-                        sram_b_addr <= ((k_cnt + 1) * N) + j_cnt;
-                        state       <= ST_FETCH;
+                NEXT: begin
+                    if (i == N - 1 && j == N - 1)
+                        state <= FINISH;           // all cells done
+                    else begin
+                        if (j == N - 1) begin      // end of row -> next row
+                            j <= 0;
+                            i <= i + 1;
+                        end else
+                            j <= j + 1;            // next column
+                        state <= INIT;
                     end
                 end
 
-                // -------------------------------------------------------------
-                // ST_WRITE_C: Store accumulated result into SRAM C
-                // -------------------------------------------------------------
-                ST_WRITE_C: begin
-                    sram_c_we   <= 1'b1;
-                    sram_c_addr <= (i_cnt * N) + j_cnt;
-                    state       <= ST_NEXT_ELEM;
+                FINISH: begin
+                    done  <= 1;
+                    busy  <= 0;
+                    state <= IDLE;
                 end
 
-                // -------------------------------------------------------------
-                // ST_NEXT_ELEM: Advance (i, j) counters to next matrix cell
-                // -------------------------------------------------------------
-                ST_NEXT_ELEM: begin
-                    if (i_cnt == N - 1 && j_cnt == N - 1) begin
-                        // All N x N elements computed!
-                        state <= ST_DONE;
-                    end else begin
-                        if (j_cnt == N - 1) begin
-                            j_cnt <= 0;
-                            i_cnt <= i_cnt + 1;
-                        end else begin
-                            j_cnt <= j_cnt + 1;
-                        end
-                        state <= ST_INIT_ELEM;
-                    end
-                end
-
-                // -------------------------------------------------------------
-                // ST_DONE: Signal completion to Host
-                // -------------------------------------------------------------
-                ST_DONE: begin
-                    done  <= 1'b1;
-                    busy  <= 1'b0;
-                    state <= ST_IDLE;
-                end
-
-                default: state <= ST_IDLE;
-
+                default: state <= IDLE;
             endcase
         end
     end

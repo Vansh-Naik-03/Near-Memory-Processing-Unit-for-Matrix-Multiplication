@@ -78,9 +78,15 @@ module tb_nmpu_top;
         $dumpvars(0, tb_nmpu_top);
 
         // Load test matrices from golden model output
-        $readmemh("../sim/test_vectors/a_data.hex", a_hex);
-        $readmemh("../sim/test_vectors/b_data.hex", b_hex);
-        $readmemh("../sim/test_vectors/c_expected.hex", c_hex);
+       // $readmemh("../sim/test_vectors/a_data.hex", a_hex);
+       // $readmemh("../sim/test_vectors/b_data.hex", b_hex);
+       // $readmemh("../sim/test_vectors/c_expected.hex", c_hex);
+       $readmemh("a_data.hex", a_hex);
+       $readmemh("b_data.hex", b_hex);
+       $readmemh("c_data.hex", c_hex);
+        $readmemh("/home/user/Vansh/NMPU/NMPU.sim/sim_1/behav/xsim", a_hex);
+        $readmemh("/home/user/Vansh/NMPU/NMPU.sim/sim_1/behav/xsim", b_hex);
+        $readmemh("/home/user/Vansh/NMPU/NMPU.sim/sim_1/behav/xsim", c_hex);
 
         $display("\n===============================================================");
         $display("   FINAL YEAR PROJECT: Near-Memory Processing Unit (NMPU)       ");
@@ -191,7 +197,7 @@ module tb_nmpu_top;
         $display("===============================================================");
         if (fail_count == 0) begin
             $display("   *** ALL 16 MATRIX ELEMENTS VERIFIED SUCCESSFULLY! ***       ");
-            $display("   *** FINAL RESULT: NMPU TESTBENCH PASSED (100% MATCH) ***    ");
+            $display("   *** FINAL RESULT: NMPU TESTBENCH PASSED (100%% MATCH) ***    ");
         end else begin
             $display("   *** VERIFICATION FAILED: %0d MISMATCHES DETECTED ***        ", fail_count);
         end

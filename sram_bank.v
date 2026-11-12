@@ -1,46 +1,33 @@
-// =============================================================================
-// File: sram_bank.v
-// Module: sram_bank
-// Project: Near-Memory Processing Unit (NMPU)
-// Description:
-//   Synchronous On-Chip Near-Memory SRAM Bank.
-//   Used for SRAM A, SRAM B, and SRAM C.
-//   Synthesizable into ASIC standard cell register files or memory macros.
-//   Features 1-clock-cycle synchronous read latency.
-// =============================================================================
-
+// SRAM bank: a small memory. Write when we=1, read always (output appears 1 clock later).
 `timescale 1ns / 1ps
 
 module sram_bank #(
     parameter DEPTH      = 16,
     parameter DATA_WIDTH = 8,
-    parameter ADDR_WIDTH = 4   // clog2(16)
+    parameter ADDR_WIDTH = 4
 )(
-    input  wire                   clk,
-    input  wire                   rst_n,   // Optional reset to clear memory contents
-    input  wire                   we,      // Write enable
-    input  wire [ADDR_WIDTH-1:0]  addr,    // Memory address
-    input  wire [DATA_WIDTH-1:0]  din,     // Data input to write
-    output reg  [DATA_WIDTH-1:0]  dout     // Synchronous data output read
+    input  wire                  clk,
+    input  wire                  rst_n,   // active-low reset
+    input  wire                  we,      // write enable
+    input  wire [ADDR_WIDTH-1:0] addr,
+    input  wire [DATA_WIDTH-1:0] din,
+    output reg  [DATA_WIDTH-1:0] dout
 );
 
-    // Internal memory array
+    // the memory itself: DEPTH boxes, each DATA_WIDTH bits wide
     reg [DATA_WIDTH-1:0] mem [0:DEPTH-1];
-
-    integer idx;
+    integer i;
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            dout <= {DATA_WIDTH{1'b0}};
-            // Optional memory zeroing on reset for simulation determinism
-            for (idx = 0; idx < DEPTH; idx = idx + 1) begin
-                mem[idx] <= {DATA_WIDTH{1'b0}};
-            end
+            // reset: empty every box and the output
+            dout <= 0;
+            for (i = 0; i < DEPTH; i = i + 1)
+                mem[i] <= 0;
         end else begin
-            if (we) begin
-                mem[addr] <= din;
-            end
-            dout <= mem[addr]; // 1-cycle synchronous read
+            if (we)
+                mem[addr] <= din;   // write
+            dout <= mem[addr];      // read (1 clock delay)
         end
     end
 

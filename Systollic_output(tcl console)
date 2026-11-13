@@ -1,0 +1,109 @@
+================================================================
+   SYSTOLIC ARRAY: Full-System End-to-End Verification          
+   4x4 Output-Stationary | 8-bit signed | 100 MHz target         
+================================================================
+
+[INFO]  Test 1 (Sequential 1..16 x 1..16): completed in 45 cycles (450 ns @ 100 MHz; NMPU baseline: 177)
+   Idx | Row | Col | Systolic C | Expected C | Status
+   ----+-----+-----+------------+------------+-------
+     0 |  0  |  0  |        90  |        90  | PASS
+     1 |  0  |  1  |       100  |       100  | PASS
+     2 |  0  |  2  |       110  |       110  | PASS
+     3 |  0  |  3  |       120  |       120  | PASS
+     4 |  1  |  0  |       202  |       202  | PASS
+     5 |  1  |  1  |       228  |       228  | PASS
+     6 |  1  |  2  |       254  |       254  | PASS
+     7 |  1  |  3  |       280  |       280  | PASS
+     8 |  2  |  0  |       314  |       314  | PASS
+     9 |  2  |  1  |       356  |       356  | PASS
+    10 |  2  |  2  |       398  |       398  | PASS
+    11 |  2  |  3  |       440  |       440  | PASS
+    12 |  3  |  0  |       426  |       426  | PASS
+    13 |  3  |  1  |       484  |       484  | PASS
+    14 |  3  |  2  |       542  |       542  | PASS
+    15 |  3  |  3  |       600  |       600  | PASS
+[INFO]  Test 2 (Signed & Zero - Golden Model): completed in 46 cycles (460 ns @ 100 MHz; NMPU baseline: 177)
+   Idx | Row | Col | Systolic C | Expected C | Status
+   ----+-----+-----+------------+------------+-------
+     0 |  0  |  0  |   x  |   x  | PASS
+     1 |  0  |  1  |   x  |   x  | PASS
+     2 |  0  |  2  |   x  |   x  | PASS
+     3 |  0  |  3  |   x  |   x  | PASS
+     4 |  1  |  0  |   x  |   x  | PASS
+     5 |  1  |  1  |   x  |   x  | PASS
+     6 |  1  |  2  |   x  |   x  | PASS
+     7 |  1  |  3  |   x  |   x  | PASS
+     8 |  2  |  0  |   x  |   x  | PASS
+     9 |  2  |  1  |   x  |   x  | PASS
+    10 |  2  |  2  |   x  |   x  | PASS
+    11 |  2  |  3  |   x  |   x  | PASS
+    12 |  3  |  0  |   x  |   x  | PASS
+    13 |  3  |  1  |   x  |   x  | PASS
+    14 |  3  |  2  |   x  |   x  | PASS
+    15 |  3  |  3  |   x  |   x  | PASS
+[INFO]  Test 3 (Identity x Signed): completed in 46 cycles (460 ns @ 100 MHz; NMPU baseline: 177)
+   Idx | Row | Col | Systolic C | Expected C | Status
+   ----+-----+-----+------------+------------+-------
+     0 |  0  |  0  |         3  |         3  | PASS
+     1 |  0  |  1  |        -2  |        -2  | PASS
+     2 |  0  |  2  |         4  |         4  | PASS
+     3 |  0  |  3  |         1  |         1  | PASS
+     4 |  1  |  0  |         5  |         5  | PASS
+     5 |  1  |  1  |         0  |         0  | PASS
+     6 |  1  |  2  |        -3  |        -3  | PASS
+     7 |  1  |  3  |         2  |         2  | PASS
+     8 |  2  |  0  |        -1  |        -1  | PASS
+     9 |  2  |  1  |         4  |         4  | PASS
+    10 |  2  |  2  |         2  |         2  | PASS
+    11 |  2  |  3  |        -5  |        -5  | PASS
+    12 |  3  |  0  |         2  |         2  | PASS
+    13 |  3  |  1  |        -1  |        -1  | PASS
+    14 |  3  |  2  |         0  |         0  | PASS
+    15 |  3  |  3  |         3  |         3  | PASS
+[INFO]  Test 4 (Extreme Signed -128/127/0): completed in 46 cycles (460 ns @ 100 MHz; NMPU baseline: 177)
+   Idx | Row | Col | Systolic C | Expected C | Status
+   ----+-----+-----+------------+------------+-------
+     0 |  0  |  0  |     32768  |     32768  | PASS
+     1 |  0  |  1  |    -32512  |    -32512  | PASS
+     2 |  0  |  2  |     32768  |     32768  | PASS
+     3 |  0  |  3  |    -32512  |    -32512  | PASS
+     4 |  1  |  0  |     32768  |     32768  | PASS
+     5 |  1  |  1  |    -32512  |    -32512  | PASS
+     6 |  1  |  2  |     32768  |     32768  | PASS
+     7 |  1  |  3  |    -32512  |    -32512  | PASS
+     8 |  2  |  0  |     32768  |     32768  | PASS
+     9 |  2  |  1  |    -32512  |    -32512  | PASS
+    10 |  2  |  2  |     32768  |     32768  | PASS
+    11 |  2  |  3  |    -32512  |    -32512  | PASS
+    12 |  3  |  0  |     32768  |     32768  | PASS
+    13 |  3  |  1  |    -32512  |    -32512  | PASS
+    14 |  3  |  2  |     32768  |     32768  | PASS
+    15 |  3  |  3  |    -32512  |    -32512  | PASS
+[INFO]  Test 5 (Reset then restart - Zero x Identity): completed in 45 cycles (450 ns @ 100 MHz; NMPU baseline: 177)
+   Idx | Row | Col | Systolic C | Expected C | Status
+   ----+-----+-----+------------+------------+-------
+     0 |  0  |  0  |         0  |         0  | PASS
+     1 |  0  |  1  |         0  |         0  | PASS
+     2 |  0  |  2  |         0  |         0  | PASS
+     3 |  0  |  3  |         0  |         0  | PASS
+     4 |  1  |  0  |         0  |         0  | PASS
+     5 |  1  |  1  |         0  |         0  | PASS
+     6 |  1  |  2  |         0  |         0  | PASS
+     7 |  1  |  3  |         0  |         0  | PASS
+     8 |  2  |  0  |         0  |         0  | PASS
+     9 |  2  |  1  |         0  |         0  | PASS
+    10 |  2  |  2  |         0  |         0  | PASS
+    11 |  2  |  3  |         0  |         0  | PASS
+    12 |  3  |  0  |         0  |         0  | PASS
+    13 |  3  |  1  |         0  |         0  | PASS
+    14 |  3  |  2  |         0  |         0  | PASS
+    15 |  3  |  3  |         0  |         0  | PASS
+
+================================================================
+   SYSTOLIC TOP SUMMARY: 80 PASSED, 0 FAILED
+================================================================
+   *** ALL 80 ELEMENT CHECKS PASSED (100% BIT-ACCURATE) ***
+
+$finish called at time : 5596 ns : File "/home/user/Vansh/Systollic_Array/systolic-main/tb_systolic_top.v" Line 302
+INFO: [USF-XSim-96] XSim completed. Design snapshot 'tb_systolic_top_behav' loaded.
+INFO: [USF-XSim-97] XSim simulation ran for 10us

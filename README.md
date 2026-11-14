@@ -226,10 +226,10 @@ Each test loads A and B through the host port, pulses `start`, checks that `done
 
 ---
 
-## License
-
-Add your license here (for example MIT).
 
 ## Contributors
 
-Add contributor names here.
+Vansh Naik
+Siddharth Pavaskar
+Vedant Kotharkar
+Yash Palan

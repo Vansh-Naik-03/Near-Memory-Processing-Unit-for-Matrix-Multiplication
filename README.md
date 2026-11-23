@@ -229,7 +229,8 @@ Each test loads A and B through the host port, pulses `start`, checks that `done
 
 ## Contributors
 
-Vansh Naik
-Siddharth Pavaskar
-Vedant Kotharkar
-Yash Palan
+- Vansh Naik.
+- Siddharth Pavaskar.
+- Vedant Kotharkar.
+- Yash Palan.
+- Shruti Thakkarkar.
